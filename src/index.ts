@@ -38,7 +38,7 @@ const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
   cors: {
-    origin: ['http://localhost:5173', 'https://quiz-six-swart-50.vercel.app', process.env.CLIENT_URL || ''],
+    origin: ['http://localhost:5173', process.env.CLIENT_URL || ''],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     credentials: true
   }
@@ -50,7 +50,7 @@ app.use(helmet());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 app.use(cors({
-  origin: ['http://localhost:5173', 'https://quiz-six-swart-50.vercel.app', process.env.CLIENT_URL || ''],
+  origin: ['http://localhost:5173', process.env.CLIENT_URL || ''],
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   credentials: true
 }));
@@ -59,7 +59,7 @@ app.use(express.urlencoded({ extended: true }));
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 1200,
+  max: 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many requests, please try again later.' }
