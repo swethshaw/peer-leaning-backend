@@ -18,12 +18,10 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
       res.status(400).json({ success: false, message: 'Account with this email already exists' });
       return;
     }
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
     const newUser = new User({
       name,
       email: email.toLowerCase(),
-      password: hashedPassword
+      password: password
     });
     await newUser.save();
     try {
@@ -138,8 +136,7 @@ router.put('/:id/password', async (req: Request, res: Response): Promise<void> =
       res.status(400).json({ success: false, message: 'Current password is incorrect' });
       return;
     }
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(newPassword, salt);
+    user.password = newPassword;
     await user.save();
     res.json({ success: true, message: 'Password updated successfully' });
   } catch (error: any) {
