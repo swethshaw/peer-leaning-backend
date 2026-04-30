@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const discussionController_1 = require("../controllers/discussionController");
+const auth_1 = require("../middleware/auth");
+const router = (0, express_1.Router)();
+router.get('/', auth_1.protect, discussionController_1.getDiscussions);
+router.get('/:id', auth_1.protect, discussionController_1.getDiscussionById);
+router.post('/', auth_1.protect, discussionController_1.createDiscussion);
+router.post('/:id/replies', auth_1.protect, discussionController_1.replyToDiscussion);
+router.patch('/:id/like', auth_1.protect, discussionController_1.likeDiscussion);
+router.delete('/:id', auth_1.protect, discussionController_1.deleteDiscussion);
+exports.default = router;

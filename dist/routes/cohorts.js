@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const cohortController_1 = require("../controllers/cohortController");
+const auth_1 = require("../middleware/auth");
+const router = (0, express_1.Router)();
+router.get('/', auth_1.protect, cohortController_1.getCohorts);
+router.get('/me/enrolled', auth_1.protect, cohortController_1.getMyCohorts);
+router.get('/:id', auth_1.protect, cohortController_1.getCohortById);
+router.post('/:id/join', auth_1.protect, cohortController_1.joinCohort);
+router.post('/:id/leave', auth_1.protect, cohortController_1.leaveCohort);
+exports.default = router;
