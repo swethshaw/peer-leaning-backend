@@ -1,5 +1,5 @@
 import express, { Request, Response, Router } from 'express';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
 import Notification from '../models/notification';
@@ -9,12 +9,16 @@ const router: Router = express.Router();
 router.post('/register', async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, email, password } = req.body;
+    console.log('[REGISTRATION ATTEMPT]', { name, email: email?.toLowerCase(), hasPassword: !!password });
+
     if (!name || !email || !password) {
+      console.log('[REGISTRATION FAILED] Missing fields');
       res.status(400).json({ success: false, message: 'Please provide all fields' });
       return;
     }
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
+      console.log('[REGISTRATION FAILED] User already exists:', email.toLowerCase());
       res.status(400).json({ success: false, message: 'Account with this email already exists' });
       return;
     }
