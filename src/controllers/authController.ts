@@ -1,6 +1,9 @@
 import { Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
 import User from '../models/User'
+import Badge from '../models/Badge'
+import Course from '../models/Course'
+import Cohort from '../models/Cohort'
 import { AuthRequest } from '../middleware/auth'
 
 const signToken = (id: string) =>
@@ -57,11 +60,32 @@ export const login = async (req: Request, res: Response) => {
 // GET /api/auth/me
 export const getMe = async (req: AuthRequest, res: Response) => {
   try {
-    const user = await User.findById(req.user?._id).populate('badges').lean()
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' })
+    if (!req.user?._id) {
+      return res.status(401).json({ success: false, message: 'Not authorized, no user ID' })
+    }
+
+    const user = await User.findById(req.user._id)
+      .populate({ path: 'badges', model: Badge })
+      .populate({ path: 'enrolledCourses', model: Course })
+      .populate({ path: 'enrolledCohorts', model: Cohort })
+      .lean()
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found in database' })
+    }
+
     res.json({ success: true, data: user })
-  } catch {
-    res.status(500).json({ success: false, message: 'Server error' })
+  } catch (err: any) {
+    console.error('getMe error detail:', {
+      message: err.message,
+      stack: err.stack,
+      userId: req.user?._id
+    })
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error retrieving user profile',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined 
+    })
   }
 }
 

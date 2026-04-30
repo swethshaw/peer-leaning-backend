@@ -78,3 +78,36 @@ export const getEnrolledProjects = async (req: Request, res: Response): Promise<
     res.status(500).json({ success: false, message: error.message });
   }
 };
+export const getProjectActivities = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user?._id || req.params.userId;
+    
+    // 1. Find all projects user is involved in
+    const userProjects = await Project.find({
+      $or: [
+        { hostId: userId },
+        { 'roles.assignedUserId': userId }
+      ]
+    }).select('_id');
+    
+    const projectIds = userProjects.map(p => p._id);
+    
+    // 2. Fetch activities for these projects
+    const ProjectActivity = (await import('../models/ProjectActivity')).default;
+    const activities = await ProjectActivity.find({ projectId: { $in: projectIds } })
+      .sort({ timestamp: -1 })
+      .limit(50)
+      .lean();
+      
+    // Transform read status based on current user
+    const transformed = activities.map(a => ({
+      ...a,
+      id: a._id,
+      read: a.readBy.some((id: any) => id.toString() === userId.toString())
+    }));
+      
+    res.json({ success: true, data: transformed });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

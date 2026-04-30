@@ -23,6 +23,7 @@ import cohortRoutes       from './routes/cohorts';
 import discussionRoutes   from './routes/discussions';
 import lmsLeaderboardRoutes from './routes/leaderboard';
 import bookmarkRoutes     from './routes/bookmarks';
+import dashboardRoutes    from './routes/dashboard';
 import projectRoutes      from './routes/projects';
 import applicationRoutes  from './routes/applications';
 import taskRoutes         from './routes/tasks';
@@ -65,7 +66,6 @@ const apiLimiter = rateLimit({
   message: { success: false, message: 'Too many requests, please try again later.' }
 });
 app.use('/api', apiLimiter);
-
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
 
@@ -119,6 +119,7 @@ app.use('/api/cohorts',     cohortRoutes);
 app.use('/api/discussions', discussionRoutes);
 app.use('/api/lms-leaderboard', lmsLeaderboardRoutes);
 app.use('/api/bookmarks',   bookmarkRoutes);
+app.use('/api/dashboard',   dashboardRoutes);
 
 // Project Hub Routes
 app.use('/api/projects',     projectRoutes);

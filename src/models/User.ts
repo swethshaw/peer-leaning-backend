@@ -11,6 +11,7 @@ export interface IUser extends Document {
   points: number;
   badges: mongoose.Types.ObjectId[];
   enrolledCourses: mongoose.Types.ObjectId[];
+  completedCourses: mongoose.Types.ObjectId[];
   enrolledCohorts: mongoose.Types.ObjectId[];
   bookmarks: mongoose.Types.ObjectId[];
   gender?: string;
@@ -39,6 +40,7 @@ const UserSchema = new Schema<IUser>(
     points: { type: Number, default: 0 },
     badges: [{ type: Schema.Types.ObjectId, ref: 'Badge' }],
     enrolledCourses: [{ type: Schema.Types.ObjectId, ref: 'Course' }],
+    completedCourses: [{ type: Schema.Types.ObjectId, ref: 'Course' }],
     enrolledCohorts: [{ type: Schema.Types.ObjectId, ref: 'Cohort' }],
     bookmarks: [{ type: Schema.Types.ObjectId, ref: 'Course' }],
     gender: { type: String },

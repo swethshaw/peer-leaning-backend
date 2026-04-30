@@ -6,13 +6,14 @@ import { AuthRequest } from '../middleware/auth'
 import mongoose from 'mongoose'
 
 // GET /api/courses
-export const getCourses = async (req: Request, res: Response) => {
+export const getCourses = async (req: AuthRequest, res: Response) => {
   try {
-    const { page = 1, limit = 20, category, search, difficulty } = req.query
+    const { page = 1, limit = 20, category, search, difficulty, cohortId } = req.query
     const filter: Record<string, unknown> = {}
 
     if (category)   filter.category   = category
     if (difficulty) filter.difficulty = difficulty
+    if (cohortId)   filter.cohortId   = cohortId
     if (search)     filter.title      = { $regex: search, $options: 'i' }
 
     const courses = await Course.find(filter)
@@ -21,12 +22,24 @@ export const getCourses = async (req: Request, res: Response) => {
       .limit(+limit)
       .lean()
 
+    const user = await User.findById(req.user?._id).select('bookmarks enrolledCourses').lean()
+    const bookmarks = user?.bookmarks?.map(id => id.toString()) ?? []
+    const enrolled  = user?.enrolledCourses?.map(id => id.toString()) ?? []
+
+    const enriched = courses.map(c => ({
+      ...c,
+      isBookmarked: bookmarks.includes(c._id.toString()),
+      isEnrolled:   enrolled.includes(c._id.toString())
+    }))
+
     const total = await Course.countDocuments(filter)
-    res.json({ success: true, data: courses, total, page: +page, pages: Math.ceil(total / +limit) })
-  } catch {
+    res.json({ success: true, data: enriched, total, page: +page, pages: Math.ceil(total / +limit) })
+  } catch (err) {
+    console.error(err)
     res.status(500).json({ success: false, message: 'Failed to fetch courses' })
   }
 }
+
 
 // GET /api/courses/me/enrolled
 export const getMyCourses = async (req: AuthRequest, res: Response) => {
@@ -45,10 +58,12 @@ export const getMyCourses = async (req: AuthRequest, res: Response) => {
     }).lean()
 
     const progMap = Object.fromEntries(progresses.map(p => [p.course.toString(), p]))
+    const bookmarks = user?.bookmarks?.map(id => id.toString()) ?? []
 
     const enriched = courses.map(c => ({
       ...c,
       isEnrolled: true,
+      isBookmarked: bookmarks.includes(c._id.toString()),
       progressPercent:  progMap[c._id.toString()]?.progressPercent  ?? 0,
       completedLessons: progMap[c._id.toString()]?.completedLessons.length ?? 0,
     }))
@@ -87,9 +102,19 @@ export const getCourseById = async (req: AuthRequest, res: Response) => {
       }))
     }))
 
+    const user = await User.findById(req.user?._id).select('bookmarks').lean()
+    const isBookmarked = user?.bookmarks?.some(id => id.toString() === course._id.toString()) ?? false
+
     res.json({
       success: true,
-      data: { ...course, modules: enrichedModules, isEnrolled, progressPercent, completedLessons: completedLessons.length }
+      data: { 
+        ...course, 
+        modules: enrichedModules, 
+        isEnrolled, 
+        isBookmarked,
+        progressPercent, 
+        completedLessons: completedLessons.length 
+      }
     })
   } catch {
     res.status(500).json({ success: false, message: 'Failed to fetch course' })
@@ -110,14 +135,22 @@ export const enrollCourse = async (req: AuthRequest, res: Response) => {
     course.enrolledStudents.push(userId)
     await course.save()
 
-    await User.findByIdAndUpdate(req.user?._id, {
+    const pointsToAward = 
+      course.difficulty === 'Advanced' ? 30 : 
+      course.difficulty === 'Intermediate' ? 20 : 10;
+
+    const updatedUser = await User.findByIdAndUpdate(req.user?._id, {
       $addToSet: { enrolledCourses: course._id },
-      $inc: { points: 10 },
-    })
+      $inc: { points: pointsToAward },
+    }, { new: true });
 
     await Progress.create({ user: req.user?._id, course: course._id })
 
-    res.json({ success: true, message: 'Enrolled successfully', data: { enrolled: true } })
+    res.json({ 
+      success: true, 
+      message: 'Enrolled successfully', 
+      data: { enrolled: true, points: updatedUser?.points } 
+    })
   } catch {
     res.status(500).json({ success: false, message: 'Enrollment failed' })
   }
@@ -142,10 +175,26 @@ export const completeLesson = async (req: AuthRequest, res: Response) => {
     prog.progressPercent = progressPercent
     await prog.save()
 
-    // Award points per lesson
-    await User.findByIdAndUpdate(req.user?._id, { $inc: { points: 5 } })
+    // Award points per lesson based on difficulty
+    const pointsPerLesson = 
+      course.difficulty === 'Advanced' ? 15 : 
+      course.difficulty === 'Intermediate' ? 10 : 5;
 
-    res.json({ success: true, data: { progressPercent, completedLessons: prog.completedLessons.length } })
+    const updateQuery: any = { $inc: { points: pointsPerLesson } }
+    if (progressPercent === 100) {
+      updateQuery.$addToSet = { completedCourses: courseId }
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(req.user?._id, updateQuery, { new: true })
+
+    res.json({ 
+      success: true, 
+      data: { 
+        progressPercent, 
+        completedLessons: prog.completedLessons.length,
+        points: updatedUser?.points
+      } 
+    })
   } catch {
     res.status(500).json({ success: false, message: 'Failed to mark lesson complete' })
   }

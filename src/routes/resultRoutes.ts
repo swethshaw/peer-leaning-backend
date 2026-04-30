@@ -5,6 +5,7 @@ import Notification from '../models/notification';
 import Cohort from '../models/Cohort';
 import Topic from '../models/Topic';
 import Question from '../models/Question';
+import User from '../models/User';
 
 const router: Router = express.Router();
 
@@ -44,6 +45,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     } catch (achievementError) {
       console.error('Failed to process achievement notification:', achievementError);
     }
+
     res.status(201).json({ success: true, data: newResult });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
@@ -53,8 +55,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 router.get('/user/:userId', async (req: Request, res: Response): Promise<void> => {
   try {
     const results = await Result.find({ userId: req.params.userId })
-                                .populate('topicId', 'title category')
-                                .sort({ createdAt: -1 });
+      .populate('topicId', 'title category')
+      .sort({ createdAt: -1 });
     res.json({ success: true, data: results });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
@@ -68,18 +70,18 @@ router.get('/activity/:userId', async (req: Request, res: Response): Promise<voi
     daysAgo.setDate(daysAgo.getDate() - 36);
 
     const activity = await Result.aggregate([
-      { 
-        $match: { 
+      {
+        $match: {
           userId: new mongoose.Types.ObjectId(userId as string),
           createdAt: { $gte: daysAgo }
-        } 
+        }
       },
-      { 
+      {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
           totalScore: { $sum: "$score" },
           quizzesTaken: { $sum: 1 }
-        } 
+        }
       },
       { $sort: { _id: 1 } }
     ]);
@@ -97,7 +99,7 @@ router.get('/dashboard/:userId', async (req: Request, res: Response): Promise<vo
     const [cohorts, topics, userResults, questionCountsAgg] = await Promise.all([
       Cohort.find(),
       Topic.find(),
-      Result.find({ 
+      Result.find({
         userId,
         $or: [
           { customPaperId: { $exists: false } },
@@ -123,8 +125,8 @@ router.get('/dashboard/:userId', async (req: Request, res: Response): Promise<vo
 
     for (const topic of topics) {
       const topicIdStr = topic._id.toString();
-      const totalQuestions = questionCountMap.get(topicIdStr) || 0; 
-      
+      const totalQuestions = questionCountMap.get(topicIdStr) || 0;
+
       const topicResults = resultsByTopic[topicIdStr] || [];
       const correctQuestionSet = new Set<string>();
 
@@ -132,7 +134,7 @@ router.get('/dashboard/:userId', async (req: Request, res: Response): Promise<vo
         if (result.review && result.review.length > 0) {
           result.review.forEach((q: any) => {
             if (q.userAnswerIndex !== null && q.userAnswerIndex === q.correctAnswerIndex) {
-              correctQuestionSet.add(q.question); 
+              correctQuestionSet.add(q.question);
             }
           });
         }

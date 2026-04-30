@@ -6,6 +6,8 @@ export interface IProgress extends Document {
   completedLessons: string[]
   progressPercent: number
   lastAccessedAt: Date
+  createdAt: Date
+  updatedAt: Date
 }
 
 const ProgressSchema = new Schema<IProgress>(
